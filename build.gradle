@@ -36,8 +36,6 @@ task wrapper(type: Wrapper) {
 dependencies {
 	compile gradleApi()
 	compile localGroovy()
-	compile 'net.sf.jasperreports:jasperreports:6.2.0'
-	compile 'org.codehaus.gpars:gpars:1.2.1'
 }
 
 compileGroovy {

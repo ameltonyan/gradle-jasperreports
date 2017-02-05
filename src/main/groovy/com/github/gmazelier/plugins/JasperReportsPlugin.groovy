@@ -1,52 +1,52 @@
 package com.github.gmazelier.plugins
 
+import com.github.gmazelier.extension.JasperReportsExtension
 import com.github.gmazelier.tasks.JasperReportsCompile
-import com.github.gmazelier.tasks.JasperReportsPreCompile
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.tasks.Delete
 
 class JasperReportsPlugin implements Plugin<Project> {
+    JasperReportsExtension jasperReportsExtension
+    JasperReportsCompile compileAllReports
 
-	@Override
-	void apply(Project project) {
-		project.extensions.create("jasperreports", JasperReportsExtension, project)
-		def extension = project.jasperreports as JasperReportsExtension
+    @Override
+    void apply(Project project) {
+        project.with {
+            configurations {
+                jasperreports {
+                    transitive = true
+                }
+            }
 
-		def preCompileTask = project.task(
-				'prepareReportsCompilation',
-				description: 'Configure JasperReports compiler and environment.',
-				type: JasperReportsPreCompile
-		) as JasperReportsPreCompile
+            dependencies {
+                jasperreports localGroovy()
+                jasperreports 'net.sf.jasperreports:jasperreports:6.4.0'
+                jasperreports 'com.lowagie:itext:4.2.2'
+                jasperreports 'org.olap4j:olap4j:1.2.0'
+            }
 
-		def compileTask = project.task(
-				'compileAllReports',
-				description: 'Compile JasperReports design source files.',
-				group: 'jasperReports',
-				dependsOn: 'prepareReportsCompilation',
-				type: JasperReportsCompile
-		) as JasperReportsCompile
+            jasperReportsExtension = extensions.create(JasperReportsExtension.NAME, JasperReportsExtension)
+            compileAllReports = tasks.create(JasperReportsCompile.NAME, JasperReportsCompile)
 
-		project.afterEvaluate {
-			// Precompile task
-			preCompileTask.srcDir = extension.srcDir
-			preCompileTask.tmpDir = extension.tmpDir
-			preCompileTask.outDir = extension.outDir
-			preCompileTask.srcExt = extension.srcExt
-			preCompileTask.outExt = extension.outExt
-			preCompileTask.compiler = extension.compiler
-			preCompileTask.keepJava = extension.keepJava
-			preCompileTask.validateXml = extension.validateXml
-			preCompileTask.verbose = extension.verbose
-			preCompileTask.useRelativeOutDir = extension.useRelativeOutDir
-			// Compile task
-			compileTask.classpath = project.jasperreports.classpath
-			compileTask.srcDir = project.jasperreports.srcDir
-			compileTask.outDir = project.jasperreports.outDir
-			compileTask.srcExt = project.jasperreports.srcExt
-			compileTask.outExt = project.jasperreports.outExt
-			compileTask.verbose = project.jasperreports.verbose
-			compileTask.useRelativeOutDir = project.jasperreports.useRelativeOutDir
-		}
-	}
+            afterEvaluate {
+                compileAllReports.with {
+                    srcDir = jasperReportsExtension.srcDir ?: file('src/main/jasperreports')
+                    outDir = jasperReportsExtension.outDir
+                    tmpDir = jasperReportsExtension.tmpDir ?: file("${buildDir}/jasperreports")
+                    compiler = jasperReportsExtension.compiler
+                    keepJava = jasperReportsExtension.keepJava
+                    validateXml = jasperReportsExtension.validateXml
+                }
 
+                tasks.create("deleteJasperReports", Delete) {
+                    group = "Jasper Reports"
+                    description = "Delete all jasper reports files"
+                    doLast {
+                        project.delete fileTree(dir: jasperReportsExtension.outDir ?: compileAllReports.srcDir, include: '**/*.jasper')
+                    }
+                }
+            }
+        }
+    }
 }
